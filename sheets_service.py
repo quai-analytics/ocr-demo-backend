@@ -27,8 +27,8 @@ class GoogleSheetsService:
                 print("⚠️  GOOGLE_SHEETS_ID no configurada - Google Sheets deshabilitado")
                 return
             
-            # Intentar con Service Account JSON
-            credentials_json = os.getenv("GOOGLE_SHEETS_CREDENTIALS")
+            # Intentar con Service Account JSON (desde variable de entorno o archivo)
+            credentials_json = self._get_service_account_json()
             if credentials_json:
                 self._initialize_with_service_account(credentials_json, spreadsheet_id, worksheet_name)
                 return
@@ -49,10 +49,48 @@ class GoogleSheetsService:
             print(f"❌ Error inicializando Google Sheets: {str(e)}")
             self.client = None
     
+    def _get_service_account_json(self) -> str:
+        """Obtiene el JSON del service account desde variable de entorno o archivo"""
+        # Primero intenta desde variable de entorno
+        credentials_json = os.getenv("GOOGLE_SHEETS_CREDENTIALS")
+        if credentials_json:
+            return credentials_json
+        
+        # Si no, intenta leer desde archivo
+        credential_files = [
+            "/var/secrets/google/key.json",  # Cloud Run mounted secrets
+            "/app/credentials.json",  # Local development
+            "./credentials.json",
+            "credentials.json"
+        ]
+        
+        for filepath in credential_files:
+            if os.path.exists(filepath):
+                print(f"📂 Leyendo credenciales desde: {filepath}")
+                try:
+                    with open(filepath, 'r') as f:
+                        return f.read()
+                except Exception as e:
+                    print(f"⚠️  Error leyendo {filepath}: {str(e)}")
+        
+        return None
+    
     def _initialize_with_service_account(self, credentials_json, spreadsheet_id, worksheet_name):
         """Inicializa con Service Account"""
         try:
-            credentials_dict = json.loads(credentials_json)
+            print(f"🔍 Intentando parsear credenciales (primeros 100 chars): {credentials_json[:100]}...")
+            
+            # Intentar parsear el JSON
+            try:
+                credentials_dict = json.loads(credentials_json)
+            except json.JSONDecodeError as e:
+                print(f"❌ Error parseando JSON: {str(e)}")
+                print(f"❌ JSON que se intentó parsear: {credentials_json}")
+                raise ValueError(f"JSON inválido en GOOGLE_SHEETS_CREDENTIALS: {str(e)}")
+            
+            print(f"✓ JSON parseado exitosamente")
+            print(f"✓ Campos encontrados: {list(credentials_dict.keys())}")
+            
             scope = [
                 'https://www.googleapis.com/auth/spreadsheets',
                 'https://www.googleapis.com/auth/drive'
@@ -62,13 +100,19 @@ class GoogleSheetsService:
                 scopes=scope
             )
             
+            print(f"✓ Credenciales de Google creadas")
+            
             self.client = gspread.authorize(credentials)
+            print(f"✓ Cliente gspread autorizado")
+            
             self.spreadsheet = self.client.open_by_key(spreadsheet_id)
+            print(f"✓ Spreadsheet abierto: {spreadsheet_id}")
             
             try:
                 self.worksheet = self.spreadsheet.worksheet(worksheet_name)
+                print(f"✓ Hoja encontrada: {worksheet_name}")
             except gspread.exceptions.WorksheetNotFound:
-                print(f"Creando nueva hoja: {worksheet_name}")
+                print(f"⚠️ Hoja no encontrada, creando: {worksheet_name}")
                 self.worksheet = self.spreadsheet.add_worksheet(title=worksheet_name, rows=1000, cols=20)
                 self._add_headers()
             
@@ -76,6 +120,8 @@ class GoogleSheetsService:
             
         except Exception as e:
             print(f"❌ Error con Service Account: {str(e)}")
+            import traceback
+            print(f"❌ Traceback completo:\n{traceback.format_exc()}")
             raise
     
     def _initialize_with_oauth2(self, client_id, client_secret, refresh_token, spreadsheet_id, worksheet_name):
