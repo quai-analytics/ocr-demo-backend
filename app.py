@@ -155,8 +155,8 @@ def send_invoice_to_bigquery(invoice_data):
             "ruc": invoice_data.get("ruc", ""),
             "fecha": invoice_data.get("fecha", ""),
             "total": invoice_data.get("total", ""),
-            "articulos": invoice_data.get("articulos", []),
-            "raw_data": invoice_data
+            "articulos": json.dumps(invoice_data.get("articulos", [])),
+            "raw_data": json.dumps(invoice_data)
         }
         errors = client.insert_rows_json(table_id, [row])
         if errors:
