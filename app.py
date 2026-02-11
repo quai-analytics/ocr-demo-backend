@@ -7,6 +7,7 @@ import joblib
 import pandas as pd
 from google.cloud import vision
 import google.generativeai as genai
+from sheets_service import sheets_service
 
 app = Flask(__name__)
 CORS(app)  # Permitir requests desde el frontend
@@ -125,6 +126,11 @@ def ocr_structured():
         )
 
         parsed = extract_json(response.text or "{}")
+        
+        # Enviar datos a Google Sheets automáticamente
+        if sheets_service.is_connected() and parsed:
+            sheets_service.send_invoice_data(parsed)
+        
         return jsonify(parsed)
 
     except Exception as e:
