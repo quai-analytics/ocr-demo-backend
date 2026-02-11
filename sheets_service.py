@@ -144,10 +144,14 @@ class GoogleSheetsService:
             True si fue exitoso, False en caso contrario
         """
         if not self.worksheet:
-            print("Google Sheets no inicializado")
+            print("❌ Google Sheets no inicializado - no hay conexión a worksheet")
             return False
         
         try:
+            # Debug
+            print(f"📝 Preparando datos para enviar a Google Sheets...")
+            print(f"📊 Datos recibidos: {json.dumps(invoice_data, indent=2)}")
+            
             # Preparar artículos como texto
             articulos = invoice_data.get("articulos", [])
             articulos_text = " | ".join([
@@ -166,6 +170,8 @@ class GoogleSheetsService:
                 json.dumps(invoice_data)
             ]
             
+            print(f"📤 Enviando fila: {row[:3]}...")  # Debug: mostrar primeros 3 campos
+            
             # Enviar a Google Sheets
             self.worksheet.append_row(row)
             print(f"✅ Datos enviados a Google Sheets: {invoice_data.get('empresa', 'N/A')}")
@@ -173,6 +179,9 @@ class GoogleSheetsService:
             
         except Exception as e:
             print(f"❌ Error enviando datos a Google Sheets: {str(e)}")
+            print(f"📋 Tipo de error: {type(e).__name__}")
+            import traceback
+            print(f"📋 Traceback: {traceback.format_exc()}")
             return False
     
     def is_connected(self) -> bool:
