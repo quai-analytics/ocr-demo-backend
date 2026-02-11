@@ -8,6 +8,8 @@ import pandas as pd
 from google.cloud import vision
 import google.generativeai as genai
 from sheets_service import sheets_service
+from google.cloud import bigquery
+from datetime import datetime
 
 app = Flask(__name__)
 CORS(app)  # Permitir requests desde el frontend
@@ -133,10 +135,35 @@ def ocr_structured():
         if sheets_service.is_connected() and parsed:
             sheets_service.send_invoice_data(parsed)
         
+        # Enviar datos a BigQuery automáticamente
+        send_invoice_to_bigquery(parsed)
+        
         return jsonify(parsed)
 
     except Exception as e:
         return jsonify({"error": str(e)}), 400
+
+# Función para enviar datos a BigQuery
+def send_invoice_to_bigquery(invoice_data):
+    try:
+        client = bigquery.Client()
+        table_id = os.getenv("BIGQUERY_TABLE_ID", "tu-proyecto.ocr_facturas.facturas")
+        row = {
+            "timestamp": datetime.now().isoformat(),
+            "empresa": invoice_data.get("empresa", ""),
+            "ruc": invoice_data.get("ruc", ""),
+            "fecha": invoice_data.get("fecha", ""),
+            "total": invoice_data.get("total", ""),
+            "articulos": invoice_data.get("articulos", []),
+            "raw_data": invoice_data
+        }
+        errors = client.insert_rows_json(table_id, [row])
+        if errors:
+            print(f"❌ Error BigQuery: {errors}")
+        else:
+            print("✅ Datos enviados a BigQuery")
+    except Exception as e:
+        print(f"❌ Error enviando a BigQuery: {str(e)}")
 
 if __name__ == '__main__':
     # Para pruebas locales: python app.py
