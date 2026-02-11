@@ -135,6 +135,7 @@ def ocr_structured():
         if sheets_service.is_connected() and parsed:
             sheets_service.send_invoice_data(parsed)
         
+        print("✅ Datos extraídos y enviados a Google Sheets y BigQuery:", parsed)
         # Enviar datos a BigQuery automáticamente
         send_invoice_to_bigquery(parsed)
         
