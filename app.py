@@ -56,6 +56,7 @@ def health():
 
 @app.post('/ocr/text')
 def ocr_text():
+    print("📥 Request recibida en /ocr/text")
     try:
         data = request.get_json(force=True)
         if not isinstance(data, dict):
@@ -85,6 +86,7 @@ def ocr_text():
 
 @app.post('/ocr/structured')
 def ocr_structured():
+    print("📄 Recibida solicitud de OCR estructurado")
     try:
         data = request.get_json(force=True)
         if not isinstance(data, dict):
