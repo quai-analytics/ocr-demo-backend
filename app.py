@@ -156,8 +156,9 @@ def send_invoice_to_bigquery(invoice_data):
             "fecha": invoice_data.get("fecha", ""),
             "total": invoice_data.get("total", ""),
             "articulos": json.dumps(invoice_data.get("articulos", [])),
-            "raw_data": json.dumps(invoice_data)
+            "raw_data": invoice_data
         }
+        print("📊 Enviando datos a BigQuery:", row)
         errors = client.insert_rows_json(table_id, [row])
         if errors:
             print(f"❌ Error BigQuery: {errors}")
