@@ -20,43 +20,62 @@ class GoogleSheetsService:
     def _initialize(self):
         """Inicializa la conexión con Google Sheets"""
         try:
+            print("=" * 60)
+            print("🔧 Inicializando Google Sheets Service")
+            print("=" * 60)
+            
             spreadsheet_id = os.getenv("GOOGLE_SHEETS_ID")
-            worksheet_name = os.getenv("GOOGLE_SHEETS_WORKSHEET", "Facturas")
+            print(f"1️⃣ GOOGLE_SHEETS_ID: {spreadsheet_id if spreadsheet_id else '❌ NO CONFIGURADO'}")
             
             if not spreadsheet_id:
                 print("⚠️  GOOGLE_SHEETS_ID no configurada - Google Sheets deshabilitado")
                 return
             
+            worksheet_name = os.getenv("GOOGLE_SHEETS_WORKSHEET", "Facturas")
+            print(f"2️⃣ GOOGLE_SHEETS_WORKSHEET: {worksheet_name}")
+            
             # Intentar con Service Account JSON (desde variable de entorno o archivo)
+            print("3️⃣ Buscando credenciales...")
             credentials_json = self._get_service_account_json()
             if credentials_json:
+                print(f"✓ Credenciales encontradas ({len(credentials_json)} chars)")
                 self._initialize_with_service_account(credentials_json, spreadsheet_id, worksheet_name)
                 return
             
             # Intentar con OAuth2 (Client ID + Secret)
+            print("4️⃣ Intentando OAuth2...")
             client_id = os.getenv("GOOGLE_CLIENT_ID")
             client_secret = os.getenv("GOOGLE_CLIENT_SECRET")
             refresh_token = os.getenv("GOOGLE_REFRESH_TOKEN")
             
             if client_id and client_secret and refresh_token:
+                print(f"✓ Credenciales OAuth2 encontradas")
                 self._initialize_with_oauth2(client_id, client_secret, refresh_token, spreadsheet_id, worksheet_name)
                 return
             
-            print("⚠️  No se encontraron credenciales de Google - Google Sheets deshabilitado")
-            print("   Configura: GOOGLE_SHEETS_CREDENTIALS (Service Account) O (GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET + GOOGLE_REFRESH_TOKEN)")
+            print("⚠️  No se encontraron credenciales de Google")
+            print("   Configura: GOOGLE_SHEETS_CREDENTIALS (Service Account)")
+            print("   O: GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET + GOOGLE_REFRESH_TOKEN")
             
         except Exception as e:
             print(f"❌ Error inicializando Google Sheets: {str(e)}")
+            import traceback
+            print(f"❌ Traceback:\n{traceback.format_exc()}")
             self.client = None
     
     def _get_service_account_json(self) -> str:
         """Obtiene el JSON del service account desde variable de entorno o archivo"""
         # Primero intenta desde variable de entorno
+        print("   Checking GOOGLE_SHEETS_CREDENTIALS env var...")
         credentials_json = os.getenv("GOOGLE_SHEETS_CREDENTIALS")
         if credentials_json:
+            print(f"   ✓ Encontrado en variable de entorno ({len(credentials_json)} chars)")
             return credentials_json
         
+        print("   ✗ No encontrado en variable de entorno")
+        
         # Si no, intenta leer desde archivo
+        print("   Buscando archivos de credenciales...")
         credential_files = [
             "/var/secrets/google/key.json",  # Cloud Run mounted secrets
             "/app/credentials.json",  # Local development
@@ -66,13 +85,16 @@ class GoogleSheetsService:
         
         for filepath in credential_files:
             if os.path.exists(filepath):
-                print(f"📂 Leyendo credenciales desde: {filepath}")
+                print(f"   ✓ Archivo encontrado: {filepath}")
                 try:
                     with open(filepath, 'r') as f:
-                        return f.read()
+                        content = f.read()
+                        print(f"   ✓ Archivo leído ({len(content)} chars)")
+                        return content
                 except Exception as e:
-                    print(f"⚠️  Error leyendo {filepath}: {str(e)}")
+                    print(f"   ✗ Error leyendo {filepath}: {str(e)}")
         
+        print("   ✗ No se encontraron archivos de credenciales")
         return None
     
     def _initialize_with_service_account(self, credentials_json, spreadsheet_id, worksheet_name):
