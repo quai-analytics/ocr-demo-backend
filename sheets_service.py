@@ -191,7 +191,7 @@ class GoogleSheetsService:
             "RUC",
             "Fecha",
             "Total",
-            "Artículos",
+            "Articulos",
             "Raw Data"
         ]
         
